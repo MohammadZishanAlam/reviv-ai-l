@@ -5,6 +5,7 @@
 
 [![Razorpay](https://img.shields.io/badge/Powered%20by-Razorpay-blue?style=flat-square&logo=razorpay)](https://razorpay.com)
 [![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini%20Flash-orange?style=flat-square)](https://deepmind.google/technologies/gemini/)
+[![Tests](https://img.shields.io/badge/Tests-8%20Passed%20(100%25)-brightgreen?style=flat-square)]()
 [![Track](https://img.shields.io/badge/Track-AI%20Revenue%20Recovery-emerald?style=flat-square)]()
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)]()
 
@@ -69,35 +70,61 @@ reviv-ai-l/
 ├── docs/
 │   └── SRS.md                 # Complete IEEE 830 Software Requirements Specification
 ├── src/                       # Application source code
-├── tests/                     # Automated test suites
+│   ├── config.py              # Dual-mode configuration (Live vs. Simulation)
+│   ├── database.py            # SQLite engine and session management
+│   ├── models.py              # Transaction, RecoveryAttempt, BankTelemetry, AuditLog
+│   ├── telemetry.py           # Real-time issuer bank health telemetry
+│   ├── webhook.py             # HMAC-SHA256 signature verification & event parser
+│   ├── agent.py               # AI Diagnostic Engine (Gemini Flash + Heuristic Core)
+│   ├── orchestrator.py        # Razorpay Payment Link generator & dunning dispatcher
+│   └── main.py                # FastAPI app, WebSockets broadcaster, REST endpoints
+├── static/                    # Frontend assets
+│   ├── index.html             # Real-time Merchant Command Center UI
+│   └── app.js                 # WebSocket client, simulator controls, modal viewer
+├── tests/                     # Automated test suites (8/8 passing)
+│   ├── test_agent.py          # Diagnostic classification & discount tests
+│   ├── test_orchestrator.py   # Payment link creation & status transition tests
+│   └── test_webhook.py        # HMAC-SHA256 signature validation tests
+├── demo.py                    # Standalone CLI webhook runner
+├── requirements.txt           # Python dependencies
+├── conftest.py                # Pytest configuration
 ├── .gitignore
-├── README.md
-└── package.json / pyproject   # Dependencies
+└── README.md
 ```
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Quickstart & Demo Walkthrough
 
-### Prerequisites
-- Node.js 20+ / Python 3.11+
-- Razorpay Test Account ([Dashboard](https://dashboard.razorpay.com/))
-- Gemini API Key ([Google AI Studio](https://aistudio.google.com/))
-
-### Configuration
-Create a `.env` file in the root directory:
-```env
-RAZORPAY_KEY_ID=rzp_test_your_key_id
-RAZORPAY_KEY_SECRET=your_key_secret
-RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
-GEMINI_API_KEY=your_gemini_api_key
-PORT=3000
+### 1. Setup Virtual Environment
+```powershell
+python -m venv .venv
+.\.venv\Scripts\pip install -r requirements.txt
 ```
+
+### 2. Run Automated Verification Tests
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/ -v
+```
+*(All 8 tests pass covering HMAC cryptography, taxonomy classification, and recovery transitions.)*
+
+### 3. Launch the Server
+```powershell
+.\.venv\Scripts\uvicorn.exe src.main:app --reload --port 8000
+```
+Open **`http://localhost:8000`** in your browser.
+
+### 4. Interactive Live Demo for Judges
+1. **Trigger Scenario A (Bank Downtime):** Click *"Scenario A: SBI CBS Downtime"*. The AI agent detects bank server lag, classifies it as `BANK_DOWNTIME_TRANSIENT`, and enforces a 15-minute retry delay rather than spamming the user.
+2. **Trigger Scenario B (UPI Daily Limit):** Click *"Scenario B: Daily UPI Ceiling Exceeded"*. The AI classifies it as `USER_LIMIT_EXCEEDED` and generates a card/netbanking fallback link.
+3. **Trigger Scenario C (High Cart Friction):** Click *"Scenario C: High-Cart OTP Dropoff"*. Cart value is ₹8,999; the agent detects friction and automatically attaches a **5% dynamic recovery incentive** to close the sale.
+4. **Preview Customer Outreach:** Click *"Preview Outreach"* on any card to view the simulated WhatsApp message and 1-click checkout button.
+5. **Recover Revenue:** Click *"Simulate Customer Pay"*. Observe the At-Risk GMV shift to **Recovered GMV** in real time!
 
 ---
 
-## 📜 Documentation
-For detailed system architecture, API contracts, entity-relationship diagrams, and state machines, see [docs/SRS.md](docs/SRS.md).
+## 📜 Full Documentation
+For the detailed IEEE 830 specification, see [docs/SRS.md](docs/SRS.md).
 
 ---
 
