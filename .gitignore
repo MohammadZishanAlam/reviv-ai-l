@@ -33,3 +33,6 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+
+Reviv_AI_l_Submission_and_Pitch_Dossier.pdf
+generate_pdf.py

@@ -33,6 +33,21 @@
         .animate-pulse-slow {
             animation: pulse-slow 3s infinite ease-in-out;
         }
+        /* Sleek scrollbar for transaction stream */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0d1322;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2d3748;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #4a5568;
+        }
     </style>
 </head>
 <body class="bg-[#0B0F19] text-gray-100 min-h-screen font-sans antialiased">
@@ -45,7 +60,7 @@
                 </div>
                 <div>
                     <span class="text-xl font-bold tracking-tight">Reviv-<span class="text-emerald-400">AI</span>-l</span>
-                    <span class="ml-2 text-xs bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded-full font-medium">Razorpay Buildathon</span>
+                    <span class="ml-2 text-xs bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded-full font-medium">Merchant Edition</span>
                 </div>
             </div>
             
@@ -72,9 +87,9 @@
                 <p class="text-gray-400 text-sm mt-1">Autonomous payment failure interception, root-cause diagnosis & adaptive dunning.</p>
             </div>
             <div class="flex items-center space-x-3">
-                <button onclick="refreshData()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold px-4 py-2.5 rounded-lg border border-gray-700 transition flex items-center space-x-2">
-                    <i class="fa-solid fa-arrows-rotate"></i>
-                    <span>Refresh</span>
+                <button id="refreshBtn" onclick="handleManualRefresh()" class="bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-200 text-xs font-semibold px-4 py-2.5 rounded-lg border border-gray-700 transition flex items-center space-x-2 shadow-sm">
+                    <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
+                    <span id="refreshText">Refresh</span>
                 </button>
             </div>
         </div>
@@ -152,7 +167,7 @@
                             <i class="fa-solid fa-vial-circle-check text-indigo-400"></i>
                             <h2 class="text-base font-bold text-white">Interactive Failure Simulator</h2>
                         </div>
-                        <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono">Judge Demo Bench</span>
+                        <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono">Developer Sandbox</span>
                     </div>
                     <p class="text-xs text-gray-400 mb-5">Trigger real-world payment edge cases to observe Reviv-AI-l diagnosis and recovery actions in real time.</p>
                     
@@ -196,7 +211,7 @@
                             <i class="fa-solid fa-arrow-right text-gray-500 group-hover:text-white transition text-xs"></i>
                         </button>
 
-                        <!-- Track 3 Bar: Batch Recovery Benchmark Button -->
+                        <!-- Multi-Rail Batch Surge Test Button -->
                         <div class="pt-3 border-t border-indigo-900/40">
                             <button id="batchBenchmarkBtn" onclick="triggerBatchBenchmark()" class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-bold p-3.5 rounded-xl transition flex items-center justify-between shadow-lg shadow-indigo-500/20 active:scale-[0.99] group">
                                 <div class="flex items-center space-x-3 text-left">
@@ -205,10 +220,10 @@
                                     </div>
                                     <div>
                                         <div class="text-xs font-bold text-white flex items-center space-x-1.5">
-                                            <span>Run 25-Record Batch Benchmark</span>
-                                            <span class="bg-emerald-400 text-emerald-950 text-[9px] px-1.5 py-0.5 rounded font-black tracking-wide uppercase">Track 3 Bar</span>
+                                            <span>Simulate Traffic Surge (25 Orders)</span>
+                                            <span class="bg-emerald-400 text-emerald-950 text-[9px] px-1.5 py-0.5 rounded font-black tracking-wide uppercase">Stress Test</span>
                                         </div>
-                                        <div class="text-[11px] text-indigo-100/80">Measures Batch GMV, Stopping Rules & Audit Trail</div>
+                                        <div class="text-[11px] text-indigo-100/80">Multi-rail batch processing across UPI, Cards & Netbanking</div>
                                     </div>
                                 </div>
                                 <i class="fa-solid fa-bolt text-white group-hover:animate-pulse transition text-xs"></i>
@@ -236,8 +251,8 @@
 
             <!-- Right Column: Real-Time Agent Stream -->
             <div class="lg:col-span-7">
-                <div class="bg-[#111827] border border-gray-800/80 rounded-2xl p-6">
-                    <div class="flex items-center justify-between mb-6">
+                <div class="bg-[#111827] border border-gray-800/80 rounded-2xl p-6 flex flex-col h-[740px]">
+                    <div class="flex items-center justify-between mb-4 flex-shrink-0">
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-satellite-dish text-indigo-400"></i>
                             <h2 class="text-base font-bold text-white">Autonomous Agent Activity Stream</h2>
@@ -245,7 +260,7 @@
                         <span class="text-xs text-gray-400" id="txCountLabel">0 events</span>
                     </div>
 
-                    <div id="transactionStream" class="space-y-4">
+                    <div id="transactionStream" class="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
                         <!-- Empty state -->
                         <div class="text-center py-16 border border-dashed border-gray-800 rounded-xl">
                             <i class="fa-solid fa-radar text-3xl text-gray-600 mb-3"></i>
@@ -299,18 +314,18 @@
         </div>
     </div>
 
-    <!-- Batch Recovery Benchmark Modal (Track 3 Bar Validation) -->
+    <!-- High-Volume Simulation Report Modal -->
     <div id="batchModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-[#111827] border border-indigo-700/60 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-fadeIn">
             <!-- Modal Header -->
             <div class="bg-gradient-to-r from-indigo-950 via-slate-900 to-emerald-950 px-6 py-4 flex items-center justify-between border-b border-indigo-800/40">
                 <div class="flex items-center space-x-3">
                     <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center">
-                        <i class="fa-solid fa-square-poll-vertical text-base"></i>
+                        <i class="fa-solid fa-chart-pie text-base"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-white">Batch Revenue Recovery Benchmark</h3>
-                        <p class="text-[11px] text-gray-400">Track 3 Rubric Validation • 25 Diverse Transactions</p>
+                        <h3 class="text-sm font-bold text-white">High-Volume Simulation Report</h3>
+                        <p class="text-[11px] text-gray-400">Batch Recovery Run • 25 Multi-Rail Transactions</p>
                     </div>
                 </div>
                 <button onclick="closeBatchModal()" class="text-gray-400 hover:text-white">
@@ -332,40 +347,40 @@
                     </div>
                 </div>
 
-                <!-- 4 Pillars of Track 3 -->
+                <!-- Policy & Compliance Checks -->
                 <div class="space-y-2.5">
-                    <div class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Track 3 Rubric Verification</div>
+                    <div class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Policy Execution & Compliance Audit</div>
                     
                     <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
                         <div class="flex items-center space-x-2.5">
-                            <i class="fa-solid fa-percent text-indigo-400"></i>
-                            <span class="text-gray-300">Measured Recovery Rate</span>
+                            <i class="fa-solid fa-arrow-trend-up text-emerald-400"></i>
+                            <span class="text-gray-300">Overall Recovery Rate</span>
                         </div>
-                        <span id="batchRate" class="font-mono font-bold text-indigo-300">0.0%</span>
+                        <span id="batchRate" class="font-mono font-bold text-emerald-400">0.0%</span>
                     </div>
 
                     <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
                         <div class="flex items-center space-x-2.5">
                             <i class="fa-solid fa-shield-halved text-rose-400"></i>
-                            <span class="text-gray-300">Hard Stopping Rules (Fraud/Stolen)</span>
+                            <span class="text-gray-300">Fraud Prevention Sentinel</span>
                         </div>
-                        <span id="batchStopping" class="font-mono font-bold text-rose-300">0 stopped (0 outreach)</span>
+                        <span id="batchStopping" class="font-mono font-bold text-rose-300">0 blocked (zero outreach)</span>
                     </div>
 
                     <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
                         <div class="flex items-center space-x-2.5">
                             <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
-                            <span class="text-gray-300">Compliant Backoff (Bank Down)</span>
+                            <span class="text-gray-300">Issuer Outage Backoff Queue</span>
                         </div>
                         <span id="batchDowntime" class="font-mono font-bold text-amber-300">0 delayed 15m</span>
                     </div>
 
                     <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
                         <div class="flex items-center space-x-2.5">
-                            <i class="fa-solid fa-receipt text-emerald-400"></i>
-                            <span class="text-gray-300">SQLite Cryptographic Audit Trail</span>
+                            <i class="fa-solid fa-clipboard-check text-indigo-400"></i>
+                            <span class="text-gray-300">Audit & Compliance Trail</span>
                         </div>
-                        <span id="batchAudit" class="font-mono font-bold text-emerald-300">25 records verified</span>
+                        <span id="batchAudit" class="font-mono font-bold text-indigo-300">25 records logged</span>
                     </div>
                 </div>
             </div>
@@ -374,10 +389,10 @@
             <div class="bg-gray-900 px-6 py-3.5 border-t border-gray-800 flex items-center justify-between">
                 <span class="text-[11px] text-emerald-400 flex items-center space-x-1">
                     <i class="fa-solid fa-circle-check"></i>
-                    <span>Synchronized with Live Dashboard</span>
+                    <span>Transactions published to live feed</span>
                 </span>
                 <button onclick="closeBatchModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-lg font-semibold transition">
-                    Done
+                    Close Report
                 </button>
             </div>
         </div>

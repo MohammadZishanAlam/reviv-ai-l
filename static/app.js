@@ -64,6 +64,39 @@ function hideServerOfflineBanner() {
     if (banner) banner.classList.add("hidden");
 }
 
+async function handleManualRefresh() {
+    const btn = document.getElementById("refreshBtn");
+    const icon = document.getElementById("refreshIcon");
+    const text = document.getElementById("refreshText");
+    
+    if (icon) icon.classList.add("fa-spin");
+    if (text) text.innerText = "Refreshing...";
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.75";
+    }
+
+    try {
+        await refreshData();
+        if (text) text.innerText = "Updated ✓";
+        setTimeout(() => {
+            if (text) text.innerText = "Refresh";
+        }, 1200);
+    } catch (e) {
+        console.error("Refresh error:", e);
+        if (text) text.innerText = "Failed ⚠️";
+        setTimeout(() => {
+            if (text) text.innerText = "Refresh";
+        }, 1500);
+    } finally {
+        if (icon) icon.classList.remove("fa-spin");
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
+    }
+}
+
 async function refreshData() {
     await Promise.all([
         fetchStats(),
@@ -295,7 +328,7 @@ async function triggerBatchBenchmark() {
         btn.innerHTML = `
             <div class="flex items-center space-x-3 text-left w-full justify-center">
                 <i class="fa-solid fa-spinner fa-spin text-white text-base"></i>
-                <span class="text-xs font-bold text-white">Running 25-Record Batch Benchmark...</span>
+                <span class="text-xs font-bold text-white">Simulating traffic surge across 25 orders...</span>
             </div>
         `;
     }
@@ -307,15 +340,15 @@ async function triggerBatchBenchmark() {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        console.log("Batch benchmark completed:", data);
+        console.log("Batch simulation completed:", data);
 
         // Populate Batch Modal
         document.getElementById("batchAtRisk").innerText = `₹${data.total_at_risk_inr.toLocaleString('en-IN')}`;
         document.getElementById("batchRecovered").innerText = `₹${data.total_recovered_inr.toLocaleString('en-IN')}`;
         document.getElementById("batchRate").innerText = `${data.recovery_rate_pct}%`;
-        document.getElementById("batchStopping").innerText = `${data.stopping_rules_enforced} cards halted (0 outreach)`;
-        document.getElementById("batchDowntime").innerText = `${data.bank_downtime_delays} delayed 15m (anti-spam)`;
-        document.getElementById("batchAudit").innerText = `${data.audit_trail_entries_created} records verified in SQLite`;
+        document.getElementById("batchStopping").innerText = `${data.stopping_rules_enforced} blocked (zero outreach)`;
+        document.getElementById("batchDowntime").innerText = `${data.bank_downtime_delays} queued (15m delay)`;
+        document.getElementById("batchAudit").innerText = `${data.audit_trail_entries_created} immutable logs recorded`;
 
         // Display Modal
         document.getElementById("batchModal").classList.remove("hidden");
