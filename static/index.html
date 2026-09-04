@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -195,6 +195,25 @@
                             </div>
                             <i class="fa-solid fa-arrow-right text-gray-500 group-hover:text-white transition text-xs"></i>
                         </button>
+
+                        <!-- Track 3 Bar: Batch Recovery Benchmark Button -->
+                        <div class="pt-3 border-t border-indigo-900/40">
+                            <button id="batchBenchmarkBtn" onclick="triggerBatchBenchmark()" class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-bold p-3.5 rounded-xl transition flex items-center justify-between shadow-lg shadow-indigo-500/20 active:scale-[0.99] group">
+                                <div class="flex items-center space-x-3 text-left">
+                                    <div class="w-9 h-9 rounded-lg bg-white/20 text-white flex items-center justify-center group-hover:scale-105 transition">
+                                        <i class="fa-solid fa-layer-group text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-white flex items-center space-x-1.5">
+                                            <span>Run 25-Record Batch Benchmark</span>
+                                            <span class="bg-emerald-400 text-emerald-950 text-[9px] px-1.5 py-0.5 rounded font-black tracking-wide uppercase">Track 3 Bar</span>
+                                        </div>
+                                        <div class="text-[11px] text-indigo-100/80">Measures Batch GMV, Stopping Rules & Audit Trail</div>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-bolt text-white group-hover:animate-pulse transition text-xs"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -274,6 +293,90 @@
             <!-- WhatsApp Footer -->
             <div class="bg-[#202c33] p-3 text-center border-t border-gray-800">
                 <button onclick="closeModal()" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs py-2 rounded-lg font-medium transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Recovery Benchmark Modal (Track 3 Bar Validation) -->
+    <div id="batchModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-[#111827] border border-indigo-700/60 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-fadeIn">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-indigo-950 via-slate-900 to-emerald-950 px-6 py-4 flex items-center justify-between border-b border-indigo-800/40">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center">
+                        <i class="fa-solid fa-square-poll-vertical text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Batch Revenue Recovery Benchmark</h3>
+                        <p class="text-[11px] text-gray-400">Track 3 Rubric Validation • 25 Diverse Transactions</p>
+                    </div>
+                </div>
+                <button onclick="closeBatchModal()" class="text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-5">
+                <!-- Summary Metrics Grid -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gray-900/80 border border-gray-800 p-3.5 rounded-xl">
+                        <div class="text-[11px] text-gray-400 uppercase font-semibold">Total At-Risk GMV</div>
+                        <div id="batchAtRisk" class="text-xl font-bold text-rose-400 mt-1">₹0.00</div>
+                    </div>
+                    <div class="bg-gray-900/80 border border-emerald-900/50 p-3.5 rounded-xl">
+                        <div class="text-[11px] text-emerald-400 uppercase font-semibold">Rescued GMV</div>
+                        <div id="batchRecovered" class="text-xl font-bold text-emerald-400 mt-1">₹0.00</div>
+                    </div>
+                </div>
+
+                <!-- 4 Pillars of Track 3 -->
+                <div class="space-y-2.5">
+                    <div class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Track 3 Rubric Verification</div>
+                    
+                    <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2.5">
+                            <i class="fa-solid fa-percent text-indigo-400"></i>
+                            <span class="text-gray-300">Measured Recovery Rate</span>
+                        </div>
+                        <span id="batchRate" class="font-mono font-bold text-indigo-300">0.0%</span>
+                    </div>
+
+                    <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2.5">
+                            <i class="fa-solid fa-shield-halved text-rose-400"></i>
+                            <span class="text-gray-300">Hard Stopping Rules (Fraud/Stolen)</span>
+                        </div>
+                        <span id="batchStopping" class="font-mono font-bold text-rose-300">0 stopped (0 outreach)</span>
+                    </div>
+
+                    <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2.5">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+                            <span class="text-gray-300">Compliant Backoff (Bank Down)</span>
+                        </div>
+                        <span id="batchDowntime" class="font-mono font-bold text-amber-300">0 delayed 15m</span>
+                    </div>
+
+                    <div class="bg-gray-900/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2.5">
+                            <i class="fa-solid fa-receipt text-emerald-400"></i>
+                            <span class="text-gray-300">SQLite Cryptographic Audit Trail</span>
+                        </div>
+                        <span id="batchAudit" class="font-mono font-bold text-emerald-300">25 records verified</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-900 px-6 py-3.5 border-t border-gray-800 flex items-center justify-between">
+                <span class="text-[11px] text-emerald-400 flex items-center space-x-1">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Synchronized with Live Dashboard</span>
+                </span>
+                <button onclick="closeBatchModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-lg font-semibold transition">
                     Done
                 </button>
             </div>

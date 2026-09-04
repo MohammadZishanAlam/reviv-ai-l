@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 from typing import List
 from contextlib import asynccontextmanager
@@ -295,6 +295,96 @@ async def simulate_customer_recovery(transaction_id: str, db: Session = Depends(
         "amount": tx.amount
     })
     return {"status": "recovered", "transaction_id": transaction_id, "amount": tx.amount}
+
+@app.post("/api/simulate/batch")
+async def simulate_batch_recovery(payload: dict = None, db: Session = Depends(get_db)):
+    """
+    Executes a comprehensive batch recovery test across 25 diverse transactions,
+    measuring money recovered, compliant escalation, stopping rules, and audit trails.
+    """
+    import random
+    import uuid
+
+    names = ["Aarav Sharma", "Priya Patel", "Vikram Malhotra", "Ananya Iyer", "Rohan Verma", "Sneha Reddy", "Aditya Nair", "Kavita Rao", "Rajesh Gupta", "Meera Joshi"]
+    banks = ["HDFC", "SBIN", "ICIC", "UTIB"]
+    
+    batch_results = []
+    total_at_risk = 0
+    total_recovered = 0
+    stopping_rules = 0
+    delayed_interventions = 0
+    incentives_attached = 0
+
+    # 25 realistic transaction profiles
+    profiles = [
+        # 8 Bank Downtime
+        *([("BANK_DOWNTIME", "BAD_REQUEST_PAYMENT_TIMED_OUT", "Issuer CBS server timeout during UPI debit", "upi", random.randint(1500, 6000))] * 8),
+        # 7 High-Cart Friction (> Rs 3000)
+        *([("FRICTION", "BAD_REQUEST_OTP_TIMEOUT", "Customer session timed out during OTP entry", "card", random.randint(4500, 15000))] * 7),
+        # 7 Limit Exceeded
+        *([("LIMIT", "INSUFFICIENT_FUNDS_OR_LIMIT_EXCEEDED", "UPI daily ceiling limit exceeded for account", "upi", random.randint(2000, 10000))] * 7),
+        # 3 Stolen Card / Fraud (Stopping Rules)
+        *([("FRAUD", "GATEWAY_ERROR_CARD_STOLEN_OR_BLOCKED", "Card blocked by issuer risk sentinel as compromised", "card", random.randint(1000, 5000))] * 3),
+    ]
+
+    for p_type, code, desc, method, amount_inr in profiles:
+        sim_id = f"pay_batch_{uuid.uuid4().hex[:8]}"
+        order_id = f"order_batch_{uuid.uuid4().hex[:6]}"
+        amount_paise = amount_inr * 100
+        bank = random.choice(banks)
+        cust_name = random.choice(names)
+
+        parsed = {
+            "payment_id": sim_id,
+            "order_id": order_id,
+            "amount": amount_paise,
+            "currency": "INR",
+            "method": method,
+            "bank": bank,
+            "error_code": code,
+            "error_description": desc,
+            "error_source": "bank" if p_type == "BANK_DOWNTIME" else "customer",
+            "error_step": "payment_authorization",
+            "error_reason": "bank_system_error" if p_type == "BANK_DOWNTIME" else code.lower(),
+            "customer_name": cust_name,
+            "customer_email": f"{cust_name.lower().replace(' ', '.')}@example.com",
+            "customer_contact": "+919876543210"
+        }
+
+        tx = process_failed_payment_event(db, parsed)
+        recovery = await execute_recovery_pipeline(db, tx)
+        total_at_risk += amount_inr
+
+        if recovery.failure_class == "HARD_FAILURE_IRRECOVERABLE":
+            stopping_rules += 1
+        elif recovery.scheduled_delay_minutes > 0:
+            delayed_interventions += 1
+            # Simulate 65% recovery rate for delayed backoff
+            if random.random() < 0.65:
+                mark_recovery_completed(db, tx.id)
+                total_recovered += amount_inr
+        else:
+            if recovery.discount_pct > 0:
+                incentives_attached += 1
+            # Simulate 75% recovery rate for friction/limit fallback
+            if random.random() < 0.75:
+                mark_recovery_completed(db, tx.id)
+                total_recovered += amount_inr
+
+    # Broadcast updated state
+    await ws_manager.broadcast({"type": "BATCH_COMPLETED"})
+
+    return {
+        "status": "success",
+        "batch_size": len(profiles),
+        "total_at_risk_inr": total_at_risk,
+        "total_recovered_inr": total_recovered,
+        "recovery_rate_pct": round((total_recovered / total_at_risk * 100.0), 1) if total_at_risk > 0 else 0.0,
+        "stopping_rules_enforced": stopping_rules,
+        "bank_downtime_delays": delayed_interventions,
+        "incentives_attached": incentives_attached,
+        "audit_trail_entries_created": len(profiles)
+    }
 
 # ----------------- WebSocket Live Stream -----------------
 

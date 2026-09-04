@@ -1,5 +1,6 @@
-﻿// Reviv-AI-l Frontend Client
+// Reviv-AI-l Frontend Client
 let socket = null;
+let isConnected = false;
 
 async function init() {
     setupWebSocket();
@@ -7,27 +8,60 @@ async function init() {
 }
 
 function setupWebSocket() {
+    if (window.location.protocol === "file:") {
+        showServerOfflineBanner("You opened this file directly from File Explorer. Please run 'start.bat' and open http://localhost:8000 to connect to the Python backend.");
+        return;
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
-    socket = new WebSocket(wsUrl);
-    
-    socket.onopen = () => {
-        document.getElementById("wsStatus").innerText = "Agent Active";
-        document.getElementById("wsPing").classList.remove("hidden");
-    };
-    
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("WebSocket event received:", data);
-        refreshData();
-    };
-    
-    socket.onclose = () => {
-        document.getElementById("wsStatus").innerText = "Reconnecting...";
-        document.getElementById("wsPing").classList.add("hidden");
-        setTimeout(setupWebSocket, 3000);
-    };
+    try {
+        socket = new WebSocket(wsUrl);
+        
+        socket.onopen = () => {
+            isConnected = true;
+            hideServerOfflineBanner();
+            document.getElementById("wsStatus").innerText = "Agent Active";
+            document.getElementById("wsPing").classList.remove("hidden");
+        };
+        
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("WebSocket event received:", data);
+            refreshData();
+        };
+        
+        socket.onclose = () => {
+            isConnected = false;
+            document.getElementById("wsStatus").innerText = "Reconnecting...";
+            document.getElementById("wsPing").classList.add("hidden");
+            setTimeout(setupWebSocket, 3000);
+        };
+
+        socket.onerror = (e) => {
+            console.warn("WebSocket connection error:", e);
+        };
+    } catch (e) {
+        console.error("Socket error:", e);
+    }
+}
+
+function showServerOfflineBanner(message) {
+    let banner = document.getElementById("serverOfflineBanner");
+    if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "serverOfflineBanner";
+        banner.className = "bg-rose-950/90 border border-rose-700 text-rose-200 text-xs px-4 py-3 text-center sticky top-16 z-30 flex items-center justify-center space-x-2";
+        document.body.prepend(banner);
+    }
+    banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> <span><strong>Backend Offline:</strong> ${message}</span>`;
+    banner.classList.remove("hidden");
+}
+
+function hideServerOfflineBanner() {
+    const banner = document.getElementById("serverOfflineBanner");
+    if (banner) banner.classList.add("hidden");
 }
 
 async function refreshData() {
@@ -41,7 +75,9 @@ async function refreshData() {
 async function fetchStats() {
     try {
         const res = await fetch("/api/stats");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const stats = await res.json();
+        hideServerOfflineBanner();
         
         document.getElementById("atRiskAmount").innerText = `₹${stats.total_at_risk_inr.toLocaleString('en-IN')}`;
         document.getElementById("recoveredAmount").innerText = `₹${stats.total_recovered_inr.toLocaleString('en-IN')}`;
@@ -51,13 +87,15 @@ async function fetchStats() {
         document.getElementById("rateProgressBar").style.width = `${Math.min(stats.recovery_rate_pct, 100)}%`;
         document.getElementById("activeInterventions").innerText = stats.active_interventions;
     } catch (e) {
-        console.error("Failed to fetch stats:", e);
+        console.warn("Could not fetch stats:", e);
+        showServerOfflineBanner("FastAPI backend is not reachable. Ensure 'start.bat' is running.");
     }
 }
 
 async function fetchTelemetry() {
     try {
         const res = await fetch("/api/telemetry");
+        if (!res.ok) return;
         const banks = await res.json();
         const container = document.getElementById("telemetryGrid");
         
@@ -90,13 +128,14 @@ async function fetchTelemetry() {
             `;
         }).join("");
     } catch (e) {
-        console.error("Failed to fetch telemetry:", e);
+        console.warn("Could not fetch telemetry:", e);
     }
 }
 
 async function fetchTransactions() {
     try {
         const res = await fetch("/api/transactions");
+        if (!res.ok) return;
         const txs = await res.json();
         const container = document.getElementById("transactionStream");
         document.getElementById("txCountLabel").innerText = `${txs.length} events logged`;
@@ -132,7 +171,7 @@ async function fetchTransactions() {
                 : "";
 
             return `
-            <div class="bg-gray-800/40 border border-gray-700/60 rounded-xl p-4 transition hover:border-gray-600">
+            <div class="bg-gray-800/40 border border-gray-700/60 rounded-xl p-4 transition hover:border-gray-600 animate-fadeIn">
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex items-center space-x-2">
                         <span class="text-xs font-mono font-bold text-gray-200">${tx.id}</span>
@@ -175,7 +214,7 @@ async function fetchTransactions() {
                         ` : ''}
 
                         ${!isRecovered ? `
-                        <button onclick="simulateRecovery('${tx.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition shadow-sm">
+                        <button onclick="simulateRecovery('${tx.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition shadow-sm active:scale-95">
                             <i class="fa-solid fa-check"></i>
                             <span>Simulate Customer Pay</span>
                         </button>
@@ -191,11 +230,18 @@ async function fetchTransactions() {
             `;
         }).join("");
     } catch (e) {
-        console.error("Failed to fetch transactions:", e);
+        console.warn("Could not fetch transactions:", e);
     }
 }
 
 async function triggerSimulation(scenario) {
+    const btn = event?.currentTarget;
+    const origHtml = btn ? btn.innerHTML : "";
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.7";
+    }
+
     try {
         const res = await fetch("/api/simulate/failure", {
             method: "POST",
@@ -206,7 +252,13 @@ async function triggerSimulation(scenario) {
         console.log("Simulated failure generated:", data);
         await refreshData();
     } catch (e) {
+        alert("Failed to connect to backend server. Make sure 'start.bat' is running.");
         console.error("Simulation failed:", e);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
     }
 }
 
@@ -232,6 +284,58 @@ function openWhatsAppModal(encodedMsg, link) {
 
 function closeModal() {
     document.getElementById("whatsappModal").classList.add("hidden");
+}
+
+async function triggerBatchBenchmark() {
+    const btn = document.getElementById("batchBenchmarkBtn");
+    const origHtml = btn ? btn.innerHTML : "";
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.75";
+        btn.innerHTML = `
+            <div class="flex items-center space-x-3 text-left w-full justify-center">
+                <i class="fa-solid fa-spinner fa-spin text-white text-base"></i>
+                <span class="text-xs font-bold text-white">Running 25-Record Batch Benchmark...</span>
+            </div>
+        `;
+    }
+
+    try {
+        const res = await fetch("/api/simulate/batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        console.log("Batch benchmark completed:", data);
+
+        // Populate Batch Modal
+        document.getElementById("batchAtRisk").innerText = `₹${data.total_at_risk_inr.toLocaleString('en-IN')}`;
+        document.getElementById("batchRecovered").innerText = `₹${data.total_recovered_inr.toLocaleString('en-IN')}`;
+        document.getElementById("batchRate").innerText = `${data.recovery_rate_pct}%`;
+        document.getElementById("batchStopping").innerText = `${data.stopping_rules_enforced} cards halted (0 outreach)`;
+        document.getElementById("batchDowntime").innerText = `${data.bank_downtime_delays} delayed 15m (anti-spam)`;
+        document.getElementById("batchAudit").innerText = `${data.audit_trail_entries_created} records verified in SQLite`;
+
+        // Display Modal
+        document.getElementById("batchModal").classList.remove("hidden");
+
+        // Refresh entire UI
+        await refreshData();
+    } catch (e) {
+        alert("Batch benchmark simulation failed. Ensure 'start.bat' is running.");
+        console.error("Batch benchmark error:", e);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.innerHTML = origHtml;
+        }
+    }
+}
+
+function closeBatchModal() {
+    document.getElementById("batchModal").classList.add("hidden");
 }
 
 // Initial launch

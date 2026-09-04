@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from src.agent import heuristic_diagnose
 
 def test_bank_downtime_diagnosis():
@@ -44,3 +44,20 @@ def test_friction_high_cart_discount():
     res = heuristic_diagnose(payment, telemetry)
     assert res["failure_class"] == "AUTH_FRICTION_TIMEOUT"
     assert res["incentive_discount_pct"] == 5.0
+
+def test_fraud_stopping_rule_enforced():
+    payment = {
+        "payment_id": "pay_fail_4",
+        "amount": 500000,
+        "bank": "HDFC",
+        "error_code": "GATEWAY_ERROR_CARD_STOLEN_OR_BLOCKED",
+        "error_description": "Card blocked by fraud monitoring system"
+    }
+    telemetry = {"status": "HEALTHY", "success_rate": 99.5}
+    
+    res = heuristic_diagnose(payment, telemetry)
+    assert res["failure_class"] == "HARD_FAILURE_IRRECOVERABLE"
+    assert res["delay_minutes"] == 0
+    assert res["incentive_discount_pct"] == 0.0
+    assert res["fallback_method"] == "NONE"
+

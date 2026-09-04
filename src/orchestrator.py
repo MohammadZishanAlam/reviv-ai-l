@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 import logging
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -107,6 +107,15 @@ async def execute_recovery_pipeline(db: Session, transaction: Transaction) -> Re
             personalized_message=diagnosis["personalized_message"]
         )
         db.add(recovery)
+        
+        # Explicit Audit Trail entry for Stopping Rule Enforcement
+        audit = AuditLog(
+            transaction_id=transaction.id,
+            event_type="STOPPING_RULE_TRIGGERED",
+            details=f"Stopping rule enforced: {diagnosis['root_cause_explanation']}. Recovery outreach halted to prevent non-compliant escalation.",
+            latency_ms=diagnosis.get("latency_ms", 0)
+        )
+        db.add(audit)
         db.commit()
         db.refresh(recovery)
         return recovery

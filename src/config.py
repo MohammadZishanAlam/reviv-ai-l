@@ -1,4 +1,4 @@
-﻿import os
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -31,14 +31,21 @@ class Settings:
         return (
             bool(self.RAZORPAY_KEY_ID) 
             and self.RAZORPAY_KEY_ID.startswith("rzp_") 
+            and "your_key" not in self.RAZORPAY_KEY_ID
             and "placeholder" not in self.RAZORPAY_KEY_ID
             and bool(self.RAZORPAY_KEY_SECRET)
+            and "your_key" not in self.RAZORPAY_KEY_SECRET
             and "placeholder" not in self.RAZORPAY_KEY_SECRET
         )
 
     @property
     def is_gemini_live(self) -> bool:
         """Returns True if a real Gemini API key is provided."""
-        return bool(self.GEMINI_API_KEY) and len(self.GEMINI_API_KEY) > 10
+        return (
+            bool(self.GEMINI_API_KEY) 
+            and len(self.GEMINI_API_KEY) > 15
+            and "your_gemini_api_key" not in self.GEMINI_API_KEY
+            and "placeholder" not in self.GEMINI_API_KEY
+        )
 
 settings = Settings()

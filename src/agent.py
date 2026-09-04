@@ -1,4 +1,4 @@
-﻿import json
+import json
 import time
 import logging
 from typing import Dict, Any
@@ -42,20 +42,17 @@ def heuristic_diagnose(payment_data: dict, bank_health: dict) -> dict:
     customer_name = payment_data.get("customer_name") or "there"
     bank = payment_data.get("bank") or "your bank"
 
-    # Rule 1: Bank Downtime
-    if (bank_status in ["DEGRADED", "DOWN"] 
-        or "TIMED_OUT" in error_code 
-        or "GATEWAY" in error_code 
-        or "bank" in error_desc and "server" in error_desc):
+    # Rule 1: Irrecoverable Hard Failure (Stopping Rule)
+    if "FRAUD" in error_code or "BLOCKED" in error_code or "STOLEN" in error_code or "SECURITY" in error_code:
         return {
-            "failure_class": "BANK_DOWNTIME_TRANSIENT",
-            "root_cause_explanation": f"{bank} servers are experiencing transient core banking delays. Immediate retry would fail.",
-            "severity": "HIGH",
-            "recommended_channel": "WHATSAPP",
-            "delay_minutes": 15,
-            "fallback_method": "UPI_INTENT",
+            "failure_class": "HARD_FAILURE_IRRECOVERABLE",
+            "root_cause_explanation": "Payment was declined due to permanent risk, fraud, or stolen card block by issuer.",
+            "severity": "CRITICAL",
+            "recommended_channel": "EMAIL",
+            "delay_minutes": 0,
+            "fallback_method": "NONE",
             "incentive_discount_pct": 0.0,
-            "personalized_message": f"Hi {customer_name}, your payment for Rs. {amount_inr:.0f} encountered temporary server lag at {bank}. We've saved your items! Complete your order safely once bank servers stabilize: {{link}}"
+            "personalized_message": f"Hi {customer_name}, your payment could not be authorized by your bank due to security restrictions. Please use an alternate payment method."
         }
 
     # Rule 2: Limit Exceeded / Insufficient Funds
@@ -71,17 +68,20 @@ def heuristic_diagnose(payment_data: dict, bank_health: dict) -> dict:
             "personalized_message": f"Hi {customer_name}, your UPI limit may have been reached for today. You can complete your order using Credit/Debit Card or NetBanking here: {{link}}"
         }
 
-    # Rule 3: Irrecoverable Hard Failure
-    if "FRAUD" in error_code or "BLOCKED" in error_code or "STOLEN" in error_code:
+    # Rule 3: Bank Downtime
+    if (bank_status in ["DEGRADED", "DOWN"] 
+        or "TIMED_OUT" in error_code 
+        or "GATEWAY_TIMEOUT" in error_code
+        or ("bank" in error_desc and "server" in error_desc)):
         return {
-            "failure_class": "HARD_FAILURE_IRRECOVERABLE",
-            "root_cause_explanation": "Payment was declined due to permanent risk or security block by issuer.",
-            "severity": "CRITICAL",
-            "recommended_channel": "EMAIL",
-            "delay_minutes": 0,
-            "fallback_method": "NONE",
+            "failure_class": "BANK_DOWNTIME_TRANSIENT",
+            "root_cause_explanation": f"{bank} servers are experiencing transient core banking delays. Immediate retry would fail.",
+            "severity": "HIGH",
+            "recommended_channel": "WHATSAPP",
+            "delay_minutes": 15,
+            "fallback_method": "UPI_INTENT",
             "incentive_discount_pct": 0.0,
-            "personalized_message": f"Hi {customer_name}, your payment could not be authorized by your bank. Please use an alternative payment method."
+            "personalized_message": f"Hi {customer_name}, your payment for Rs. {amount_inr:.0f} encountered temporary server lag at {bank}. We've saved your items! Complete your order safely once bank servers stabilize: {{link}}"
         }
 
     # Rule 4: Friction / OTP Timeout
