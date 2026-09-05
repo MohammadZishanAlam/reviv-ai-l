@@ -97,6 +97,30 @@ async function handleManualRefresh() {
     }
 }
 
+async function handleResetSimulation() {
+    if (!confirm("Clear all simulation history and start with a clean sandbox?")) return;
+    const btn = document.getElementById("resetBtn");
+    const text = document.getElementById("resetText");
+    if (text) text.innerText = "Resetting...";
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch("/api/simulate/reset", { method: "POST" });
+        if (res.ok) {
+            window.recoveryMap = {};
+            await refreshData();
+            if (text) text.innerText = "Cleared ✓";
+            setTimeout(() => { if (text) text.innerText = "Reset Data"; }, 1200);
+        }
+    } catch (e) {
+        console.error("Failed to reset sandbox:", e);
+        if (text) text.innerText = "Failed ⚠️";
+        setTimeout(() => { if (text) text.innerText = "Reset Data"; }, 1500);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 async function refreshData() {
     await Promise.all([
         fetchStats(),
@@ -198,9 +222,16 @@ async function fetchTransactions() {
                 };
             }
             
+            const isHardFailure = recovery && recovery.failure_class === "HARD_FAILURE_IRRECOVERABLE";
+            const isDelayed = recovery && recovery.delay_minutes > 0 && !isRecovered;
+
             let statusBadge = isRecovered
                 ? `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center space-x-1"><i class="fa-solid fa-check"></i><span>RECOVERED</span></span>`
-                : `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] px-2 py-0.5 rounded-full font-semibold">FAILED</span>`;
+                : (isHardFailure
+                    ? `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center space-x-1"><i class="fa-solid fa-shield-halved text-[9px]"></i><span>BLOCKED (RISK)</span></span>`
+                    : (isDelayed
+                        ? `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center space-x-1"><i class="fa-regular fa-clock text-[9px]"></i><span>QUEUED (15m)</span></span>`
+                        : `<span class="bg-slate-700/60 text-slate-300 border border-slate-600/50 text-[10px] px-2 py-0.5 rounded-full font-semibold">AT-RISK</span>`));
                 
             let taxonomyBadge = recovery && recovery.failure_class
                 ? `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded font-mono">${recovery.failure_class}</span>`

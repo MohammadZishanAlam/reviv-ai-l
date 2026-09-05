@@ -386,6 +386,16 @@ async def simulate_batch_recovery(payload: dict = None, db: Session = Depends(ge
         "audit_trail_entries_created": len(profiles)
     }
 
+@app.post("/api/simulate/reset")
+async def reset_simulation_data(db: Session = Depends(get_db)):
+    """Resets all simulation transactions, recovery attempts, and audit logs to a clean state."""
+    db.query(AuditLog).delete()
+    db.query(RecoveryAttempt).delete()
+    db.query(Transaction).delete()
+    db.commit()
+    await ws_manager.broadcast({"type": "RESET_COMPLETED"})
+    return {"status": "success", "message": "Simulation data reset successfully"}
+
 # ----------------- WebSocket Live Stream -----------------
 
 @app.websocket("/ws")

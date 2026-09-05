@@ -86,7 +86,11 @@
                 <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Merchant Recovery Command Center</h1>
                 <p class="text-gray-400 text-sm mt-1">Autonomous payment failure interception, root-cause diagnosis & adaptive dunning.</p>
             </div>
-            <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2.5">
+                <button id="resetBtn" onclick="handleResetSimulation()" class="bg-gray-800/80 hover:bg-rose-950/40 hover:border-rose-700/60 active:scale-95 text-gray-400 hover:text-rose-300 text-xs font-medium px-3.5 py-2.5 rounded-lg border border-gray-700/70 transition flex items-center space-x-1.5 shadow-sm" title="Clear simulation history to start with a fresh slate">
+                    <i class="fa-solid fa-trash-can text-[11px]"></i>
+                    <span id="resetText">Reset Data</span>
+                </button>
                 <button id="refreshBtn" onclick="handleManualRefresh()" class="bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-200 text-xs font-semibold px-4 py-2.5 rounded-lg border border-gray-700 transition flex items-center space-x-2 shadow-sm">
                     <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
                     <span id="refreshText">Refresh</span>
@@ -398,6 +402,6 @@
         </div>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=2.2"></script>
 </body>
 </html>
