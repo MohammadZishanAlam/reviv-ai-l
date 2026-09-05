@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
@@ -36,3 +36,6 @@ Thumbs.db
 
 Reviv_AI_l_Submission_and_Pitch_Dossier.pdf
 generate_pdf.py
+VIDEO_DEMO_SCRIPT.md
+VIDEO_DEMO_SCRIPT.pdf
+generate_script_pdf.py

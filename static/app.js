@@ -173,6 +173,9 @@ async function fetchTransactions() {
         const container = document.getElementById("transactionStream");
         document.getElementById("txCountLabel").innerText = `${txs.length} events logged`;
         
+        // Robust recovery store to prevent apostrophe/quote string escaping bugs in onclick
+        window.recoveryMap = window.recoveryMap || {};
+
         if (!txs || txs.length === 0) {
             container.innerHTML = `
             <div class="text-center py-16 border border-dashed border-gray-800 rounded-xl">
@@ -186,6 +189,14 @@ async function fetchTransactions() {
         container.innerHTML = txs.map(tx => {
             const isRecovered = tx.status === "recovered";
             const recovery = tx.recovery;
+            
+            if (recovery) {
+                window.recoveryMap[tx.id] = {
+                    message: recovery.message || "",
+                    link: recovery.payment_link_url || "#",
+                    customer: tx.customer_name || "Customer"
+                };
+            }
             
             let statusBadge = isRecovered
                 ? `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center space-x-1"><i class="fa-solid fa-check"></i><span>RECOVERED</span></span>`
@@ -240,11 +251,16 @@ async function fetchTransactions() {
                     
                     <div class="flex items-center space-x-2">
                         ${recovery && recovery.payment_link_url ? `
-                        <button onclick="openWhatsAppModal('${encodeURIComponent(recovery.message || '')}', '${recovery.payment_link_url}')" class="bg-emerald-900/50 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-700/50 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition">
+                        <button onclick="openWhatsAppModal('${tx.id}')" class="bg-emerald-900/50 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-700/50 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition active:scale-95">
                             <i class="fa-brands fa-whatsapp text-sm"></i>
                             <span>Preview Outreach</span>
                         </button>
-                        ` : ''}
+                        ` : (recovery && recovery.failure_class === 'HARD_FAILURE_IRRECOVERABLE' ? `
+                        <span class="text-[11px] text-rose-400/90 font-medium flex items-center space-x-1 bg-rose-950/40 border border-rose-800/40 px-2.5 py-1 rounded-lg" title="Outreach halted by stopping rule to prevent chargebacks">
+                            <i class="fa-solid fa-shield-halved text-xs"></i>
+                            <span>Outreach Blocked</span>
+                        </span>
+                        ` : '')}
 
                         ${!isRecovered ? `
                         <button onclick="simulateRecovery('${tx.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition shadow-sm active:scale-95">
@@ -308,15 +324,48 @@ async function simulateRecovery(txId) {
     }
 }
 
-function openWhatsAppModal(encodedMsg, link) {
-    const msg = decodeURIComponent(encodedMsg);
-    document.getElementById("modalMessageText").innerText = msg;
-    document.getElementById("modalLinkBtn").href = link;
-    document.getElementById("whatsappModal").classList.remove("hidden");
+function openWhatsAppModal(param1, param2) {
+    let msg = "";
+    let link = "#";
+
+    if (param2 !== undefined) {
+        // Direct call with (encodedMsg, link)
+        try {
+            msg = decodeURIComponent(param1);
+        } catch (_) {
+            msg = param1;
+        }
+        link = param2;
+    } else if (window.recoveryMap && window.recoveryMap[param1]) {
+        // Safe lookup by transaction ID (immune to apostrophes or special characters)
+        const item = window.recoveryMap[param1];
+        msg = item.message;
+        link = item.link;
+    } else {
+        try {
+            msg = decodeURIComponent(param1);
+        } catch (_) {
+            msg = param1;
+        }
+        link = "#";
+    }
+
+    if (!msg || msg.trim() === "") {
+        msg = "Hi, we noticed an issue completing your recent checkout. Please use this secure link to complete your order safely: " + (link || "");
+    }
+
+    const msgEl = document.getElementById("modalMessageText");
+    const linkEl = document.getElementById("modalLinkBtn");
+    const modalEl = document.getElementById("whatsappModal");
+
+    if (msgEl) msgEl.innerText = msg;
+    if (linkEl) linkEl.href = link || "#";
+    if (modalEl) modalEl.classList.remove("hidden");
 }
 
 function closeModal() {
-    document.getElementById("whatsappModal").classList.add("hidden");
+    const modal = document.getElementById("whatsappModal");
+    if (modal) modal.classList.add("hidden");
 }
 
 async function triggerBatchBenchmark() {
@@ -368,8 +417,24 @@ async function triggerBatchBenchmark() {
 }
 
 function closeBatchModal() {
-    document.getElementById("batchModal").classList.add("hidden");
+    const modal = document.getElementById("batchModal");
+    if (modal) modal.classList.add("hidden");
 }
+
+// Global convenience: Dismiss modals on Escape key or backdrop click
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        closeModal();
+        closeBatchModal();
+    }
+});
+
+document.addEventListener("click", (e) => {
+    const whatsappModal = document.getElementById("whatsappModal");
+    const batchModal = document.getElementById("batchModal");
+    if (e.target === whatsappModal) closeModal();
+    if (e.target === batchModal) closeBatchModal();
+});
 
 // Initial launch
 document.addEventListener("DOMContentLoaded", init);
